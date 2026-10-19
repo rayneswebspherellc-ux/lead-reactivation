@@ -14,3 +14,4 @@ Status: planning. See `docs/`.
 | `docs/research.md` | What each platform and CINC allow, with sources |
 | `docs/export-guides.md` | How an agent exports chats from each platform |
 | `docs/cinc-api-request.md` | Draft email to CINC to request API access |
+| `docs/case-study-video.md` | What we learned from the YouTube case study |
