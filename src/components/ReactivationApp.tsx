@@ -1,14 +1,16 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { clearAllLocalData } from "@/lib/client/store";
 import type { Channel } from "@/lib/types";
 import type { FromWorker, Outcome, ToWorker } from "@/workers/import.worker";
+import ConfirmDelete from "./ConfirmDelete";
 import DropStep from "./DropStep";
 import Dashboard from "./Dashboard";
 import WhoAreYou from "./WhoAreYou";
 
 type Stage =
-  | { name: "drop"; error?: string }
+  | { name: "drop"; error?: string; notice?: string }
   | { name: "reading"; fileName: string; fileIndex: number; fileCount: number; bytes: number; totalBytes: number }
   | { name: "who"; outcome: Outcome }
   | { name: "results"; outcome: Outcome };
@@ -24,6 +26,7 @@ function localeDateOrder(): "dmy" | "mdy" {
 export default function ReactivationApp() {
   const [stage, setStage] = useState<Stage>({ name: "drop" });
   const [quietDays, setQuietDays] = useState(30);
+  const [confirming, setConfirming] = useState(false);
   const worker = useRef<Worker | null>(null);
 
   useEffect(() => () => worker.current?.terminate(), []);
@@ -73,6 +76,15 @@ export default function ReactivationApp() {
     setStage({ name: "drop" });
   };
 
+  /** Ends the reader (dropping every chat it held) and wipes what this browser kept. */
+  const deleteEverything = () => {
+    worker.current?.terminate();
+    worker.current = null;
+    clearAllLocalData();
+    setConfirming(false);
+    setStage({ name: "drop", notice: "Everything was deleted. Nothing about your chats is left in this app." });
+  };
+
   return (
     <main className="min-h-dvh w-full max-w-[1920px] mx-auto px-4 sm:px-10 lg:px-[50px] py-6 sm:py-10">
       <header className="flex items-center justify-between gap-4 mb-8">
@@ -84,14 +96,23 @@ export default function ReactivationApp() {
           </span>
           <span className="text-label text-rws-gold">Lead Reactivation</span>
         </div>
-        {stage.name === "results" || stage.name === "who" ? (
-          <button type="button" className="btn-outline" onClick={restart}>
-            New import
+        <div className="flex flex-wrap justify-end gap-2">
+          {stage.name === "results" || stage.name === "who" ? (
+            <button type="button" className="btn-outline" onClick={restart}>
+              New import
+            </button>
+          ) : null}
+          <button type="button" className="btn-outline" onClick={() => setConfirming(true)}>
+            Delete everything
           </button>
-        ) : null}
+        </div>
       </header>
 
-      {stage.name === "drop" && <DropStep onStart={start} error={stage.error} defaultQuietDays={quietDays} />}
+      {confirming && <ConfirmDelete onConfirm={deleteEverything} onCancel={() => setConfirming(false)} />}
+
+      {stage.name === "drop" && (
+        <DropStep onStart={start} error={stage.error} notice={stage.notice} defaultQuietDays={quietDays} />
+      )}
 
       {stage.name === "reading" && (
         <section className="border border-rws-box-border rounded-3xl p-6 sm:p-10 lg:p-14" aria-live="polite">

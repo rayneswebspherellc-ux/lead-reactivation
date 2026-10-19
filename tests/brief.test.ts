@@ -76,8 +76,30 @@ describe("POST /api/read-lead", () => {
     vi.unstubAllEnvs();
   });
 
-  const call = (body: unknown) =>
-    POST(new Request("http://x/api/read-lead", { method: "POST", body: JSON.stringify(body), headers: { "content-type": "application/json" } }));
+  const call = (body: unknown, headers: Record<string, string> = { origin: "http://x" }) =>
+    POST(
+      new Request("http://x/api/read-lead", {
+        method: "POST",
+        body: typeof body === "string" ? body : JSON.stringify(body),
+        headers: { "content-type": "application/json", ...headers },
+      }),
+    );
+
+  it("refuses calls from other websites", async () => {
+    vi.stubEnv("OPENAI_API_KEY", "test-key");
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    expect((await call(req, { origin: "https://evil.example" })).status).toBe(403);
+    expect((await call(req, { "sec-fetch-site": "cross-site" })).status).toBe(403);
+    expect((await call(req, {})).status).toBe(403);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("refuses oversized bodies even when the size header lies", async () => {
+    vi.stubEnv("OPENAI_API_KEY", "test-key");
+    const res = await call("x".repeat(250_000));
+    expect(res.status).toBe(413);
+  });
 
   it("says honestly when no AI key is set", async () => {
     vi.stubEnv("OPENAI_API_KEY", "");
@@ -99,6 +121,7 @@ describe("POST /api/read-lead", () => {
     const sent = JSON.parse(fetchMock.mock.calls[0]![1].body as string);
     expect(sent.model).toBe("gpt-4o-mini");
     expect(sent.response_format.json_schema.strict).toBe(true);
+    expect(sent.store).toBe(false);
     expect(sent.messages[1].content).toContain("LEAD: Looking for a 2 bed in Dubai Marina");
   });
 

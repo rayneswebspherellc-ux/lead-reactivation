@@ -43,13 +43,22 @@ const GUIDES: { name: string; steps: string[] }[] = [
   },
 ];
 
+const PRIVACY = [
+  "Your chats are read on this device. They are never uploaded or saved by us.",
+  "When you ask for an AI read of one person, only the last part of that one conversation is sent to the AI. Nothing is kept afterwards.",
+  "We never contact your leads, sell them, or share them. They stay yours.",
+  "One tap on “Delete everything” removes all of it, any time.",
+];
+
 export default function DropStep({
   onStart,
   error,
+  notice,
   defaultQuietDays,
 }: {
   onStart: (files: File[], quietDays: number) => void;
   error?: string;
+  notice?: string;
   defaultQuietDays: number;
 }) {
   const [files, setFiles] = useState<File[]>([]);
@@ -166,7 +175,26 @@ export default function DropStep({
               {error}
             </p>
           )}
+          {notice && (
+            <p role="status" className="mt-6 text-body text-rws-gold">
+              {notice}
+            </p>
+          )}
         </div>
+      </section>
+
+      <section className="border border-rws-box-border rounded-3xl p-4 sm:p-5 lg:p-6">
+        <div className="bg-rws-box-fill rounded-2xl px-6 py-4 sm:px-10 sm:py-5 lg:px-14 mb-5">
+          <h2 className="heading-section text-rws-text">Your Privacy</h2>
+        </div>
+        <ul className="px-2 sm:px-10 lg:px-14 pb-2 grid gap-4 md:grid-cols-2">
+          {PRIVACY.map((p) => (
+            <li key={p} className="flex gap-4 items-start">
+              <span aria-hidden="true" className="mt-2 w-2 h-2 rounded-full bg-rws-gold shrink-0" />
+              <span className="text-body text-rws-text-secondary/80">{p}</span>
+            </li>
+          ))}
+        </ul>
       </section>
 
       <section className="border border-rws-box-border rounded-3xl p-4 sm:p-5 lg:p-6">

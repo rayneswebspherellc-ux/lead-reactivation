@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { headers } from "next/headers";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -11,7 +12,10 @@ export const viewport: Viewport = {
   themeColor: "#000000",
 };
 
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  // Reading the request makes each page view render fresh, so the CSP nonce
+  // set in proxy.ts is applied to Next's own scripts.
+  await headers();
   return (
     <html lang="en">
       <body>{children}</body>

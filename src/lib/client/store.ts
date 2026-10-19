@@ -69,3 +69,22 @@ export async function pool<T>(items: T[], size: number, run: (item: T) => Promis
   });
   await Promise.all(workers);
 }
+
+/**
+ * "Delete everything": removes all this app keeps in this browser (outcomes,
+ * settings). The chats themselves were never saved anywhere: they lived only
+ * in the open page, which the caller resets. When accounts exist this will
+ * also call the server's delete endpoint (LeadStore.deleteEverything).
+ */
+export function clearAllLocalData(): void {
+  try {
+    for (const k of Object.keys(localStorage)) if (k.startsWith("lr.")) localStorage.removeItem(k);
+  } catch {
+    // storage blocked: nothing was saved there
+  }
+  try {
+    for (const k of Object.keys(sessionStorage)) if (k.startsWith("lr.")) sessionStorage.removeItem(k);
+  } catch {
+    // same
+  }
+}

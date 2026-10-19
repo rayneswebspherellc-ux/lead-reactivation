@@ -20,7 +20,7 @@ npm run test:scale  # 1,000,000 messages / 5,000 conversations
 The AI read needs `OPENAI_API_KEY` (optional `OPENAI_MODEL`, default `gpt-4o-mini`) in `.env.local`. Without it the app works and says the AI is not connected.
 
 ### Wording written by the AI (needs founder OK)
-All on-screen text was written by the AI: page titles ("Find The Leads Worth Contacting Again", "How To Export Your Chats", "Which One Is You?", "Your Dead Leads", "Reading your conversations"), buttons ("Choose files", "Find dead leads", "Read top 20 with AI", "Read this lead", "Copy", "Open in WhatsApp", "New import", "Continue", "Show more"), the outcome labels (Contacted, Replied, Viewing booked, Closed, Not interested), the stat labels, the "left out" reasons, the privacy lines ("Everything is read on this device…"), and the export guide steps. The product name "Lead Reactivation" is a placeholder.
+All on-screen text was written by the AI: page titles ("Find The Leads Worth Contacting Again", "How To Export Your Chats", "Which One Is You?", "Your Dead Leads", "Reading your conversations"), buttons ("Choose files", "Find dead leads", "Read top 20 with AI", "Read this lead", "Copy", "Open in WhatsApp", "New import", "Continue", "Show more"), the outcome labels (Contacted, Replied, Viewing booked, Closed, Not interested), the stat labels, the "left out" reasons, the privacy lines ("Your chats are read on this device…"), the export guide steps, the dashboard headline and tier names ("Contact today", "This week", "When you have time" and their one-line explanations), the three "how to use" steps, the plain-language reason chips ("never got your reply", "asked you a question"…), "Chance they reply and act", and the delete dialog ("Delete Everything?", "Keep my data", "Yes, delete everything"). The product name "Lead Reactivation" is a placeholder.
 
 Never put real chat exports in this repo.
 
@@ -31,4 +31,5 @@ Never put real chat exports in this repo.
 | `docs/export-guides.md` | How an agent exports chats from each platform |
 | `docs/cinc-api-request.md` | Draft email to CINC to request API access |
 | `docs/export-formats.md` | What every platform's export looks like, sizes and quirks |
+| `docs/security.md` | Security and privacy: what is protected, what must happen before launch |
 | `docs/case-study-video.md` | What we learned from the YouTube case study |
