@@ -116,8 +116,19 @@ export function evaluateLead(lead: Lead, opts: DormancyOptions): Verdict {
   // Prescore: an ordering hint built only from the conversation.
   let score = 0;
   const signals: string[] = [];
+  const allLeadText = leadMsgs.map((m) => m.text).join("\n");
+  let intent = 0;
+  const intentSignals: string[] = [];
+  for (const [name, re] of INTENT_TERMS) {
+    if (re.test(allLeadText)) {
+      intent++;
+      intentSignals.push(name);
+    }
+  }
+  // An unanswered lead matters most when they showed real estate intent;
+  // an unanswered "thanks for connecting" should not outrank a real buyer.
   if (pattern === "lead_waiting") {
-    score += 25;
+    score += intent > 0 ? 25 : 6;
     signals.push("left without a reply");
   }
   if (lastLeadMessage?.trim().endsWith("?") || lastLeadMessage?.trim().endsWith("؟")) {
@@ -125,14 +136,7 @@ export function evaluateLead(lead: Lead, opts: DormancyOptions): Verdict {
     signals.push("last message was a question");
   }
   score += Math.min(20, leadTexts * 2);
-  const allLeadText = leadMsgs.map((m) => m.text).join("\n");
-  let intent = 0;
-  for (const [name, re] of INTENT_TERMS) {
-    if (re.test(allLeadText)) {
-      intent++;
-      signals.push(name);
-    }
-  }
+  signals.push(...intentSignals);
   score += Math.min(28, intent * 4);
   if (daysSilent <= 180) score += 15;
   else if (daysSilent <= 365) score += 10;

@@ -5,15 +5,28 @@
   "type": "module",
   "description": "Dead lead reactivation for real estate agents (RaynesWebSphere)",
   "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint src tests",
     "typecheck": "tsc --noEmit",
     "test": "vitest run --exclude tests/scale.test.ts",
     "test:scale": "NODE_OPTIONS='--expose-gc --max-old-space-size=4096' vitest run tests/scale.test.ts"
   },
   "dependencies": {
-    "fflate": "^0.8.2"
+    "fflate": "^0.8.2",
+    "next": "^16.3.8",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8"
   },
   "devDependencies": {
+    "@tailwindcss/postcss": "^4.3.3",
     "@types/node": "^22.10.2",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "eslint": "^9.39.5",
+    "eslint-config-next": "^16.3.8",
+    "tailwindcss": "^4.3.3",
     "typescript": "^5.6.3",
     "vitest": "^2.1.9"
   }

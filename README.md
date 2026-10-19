@@ -6,14 +6,21 @@ Inputs:
 - **CRM connection** (first: CINC, Commissions Inc)
 - **Chat exports** dropped into the app: Instagram, Facebook Messenger, WhatsApp, LinkedIn, CSV
 
-Status: chat readers and dead-lead rules built and tested (`src/lib/`). App screens and AI reading come next. See `docs/plan.md`.
+Status: chat readers, dead-lead rules, the app screens and the AI read are built and tested. Not deployed yet. See `docs/plan.md`.
 
 ```
 npm install
+npm run dev         # http://localhost:3000
 npm run typecheck
-npm test            # all readers, on made-up chats
+npm run lint
+npm test            # readers, rules and AI safety rules, on made-up chats
 npm run test:scale  # 1,000,000 messages / 5,000 conversations
 ```
+
+The AI read needs `OPENAI_API_KEY` (optional `OPENAI_MODEL`, default `gpt-4o-mini`) in `.env.local`. Without it the app works and says the AI is not connected.
+
+### Wording written by the AI (needs founder OK)
+All on-screen text was written by the AI: page titles ("Find The Leads Worth Contacting Again", "How To Export Your Chats", "Which One Is You?", "Your Dead Leads", "Reading your conversations"), buttons ("Choose files", "Find dead leads", "Read top 20 with AI", "Read this lead", "Copy", "Open in WhatsApp", "New import", "Continue", "Show more"), the outcome labels (Contacted, Replied, Viewing booked, Closed, Not interested), the stat labels, the "left out" reasons, the privacy lines ("Everything is read on this device…"), and the export guide steps. The product name "Lead Reactivation" is a placeholder.
 
 Never put real chat exports in this repo.
 

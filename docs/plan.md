@@ -85,7 +85,7 @@ tests/fixtures/          small fake exports per platform (never real chats)
 ## 9. Phases
 1. Repo + docs. **Done.**
 2. Parsers + dead-lead rules, tested on fake exports (including Arabic WhatsApp and a 1,000,000-message test). **Done (19 Oct 2026), in `src/lib/`.** Needs one real export per platform to confirm the unconfirmed details in `docs/export-formats.md`.
-3. AI lead reading + dashboard + lead card (premium dark style).
+3. AI lead reading + dashboard + lead card (premium dark style). **Built (19 Oct 2026):** drop zone with export guides, reading in a background worker with progress, "Which one is you?", dashboard (dead / active / left out, platform filter, "Read top 20 with AI"), lead card (AI read, quotes, questions to think about, opener with Copy / Open in WhatsApp, outcome buttons, latest messages). Outcomes are saved on the device only until accounts exist. The AI read needs `OPENAI_API_KEY` on the server; without it the app says so honestly. **Not deployed yet.**
 4. CINC: CSV import first, API once access arrives, outcome notes written back.
 5. Daily Top 5 email + outcome tracking.
 6. Pilot with the CINC user on their real data, with their consent.
