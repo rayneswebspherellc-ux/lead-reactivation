@@ -6,7 +6,16 @@ Inputs:
 - **CRM connection** (first: CINC, Commissions Inc)
 - **Chat exports** dropped into the app: Instagram, Facebook Messenger, WhatsApp, LinkedIn, CSV
 
-Status: planning. See `docs/`.
+Status: chat readers and dead-lead rules built and tested (`src/lib/`). App screens and AI reading come next. See `docs/plan.md`.
+
+```
+npm install
+npm run typecheck
+npm test            # all readers, on made-up chats
+npm run test:scale  # 1,000,000 messages / 5,000 conversations
+```
+
+Never put real chat exports in this repo.
 
 | File | What it is |
 |---|---|
@@ -14,4 +23,5 @@ Status: planning. See `docs/`.
 | `docs/research.md` | What each platform and CINC allow, with sources |
 | `docs/export-guides.md` | How an agent exports chats from each platform |
 | `docs/cinc-api-request.md` | Draft email to CINC to request API access |
+| `docs/export-formats.md` | What every platform's export looks like, sizes and quirks |
 | `docs/case-study-video.md` | What we learned from the YouTube case study |

@@ -1,0 +1,6 @@
+node_modules/
+coverage/
+.env*
+# Never commit real chat exports
+*.zip
+real-data/

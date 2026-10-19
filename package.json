@@ -1,0 +1,20 @@
+{
+  "name": "lead-reactivation",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Dead lead reactivation for real estate agents (RaynesWebSphere)",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --exclude tests/scale.test.ts",
+    "test:scale": "NODE_OPTIONS='--expose-gc --max-old-space-size=4096' vitest run tests/scale.test.ts"
+  },
+  "dependencies": {
+    "fflate": "^0.8.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.9"
+  }
+}

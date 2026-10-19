@@ -51,9 +51,14 @@ This is the main difference from the case study (`docs/case-study-video.md`). Th
 | Facebook Messenger | Meta export (JSON) | Page inbox connection |
 | WhatsApp | Per-chat export (.txt / .zip) | WhatsApp Business "Coexistence" (about 6 months of history, once, at sign-up) |
 | LinkedIn | `messages.csv` export | none (no API) |
+| TikTok | JSON data download (layout unconfirmed) | none |
+| Telegram | Desktop export `result.json` | none |
+| YouTube | no DMs since 2019; comments via Takeout | comments as a separate lead type |
 | CINC | CSV export of leads and notes | CINC Public API once access is granted (request: `docs/cinc-api-request.md`) |
 
-Agent guides: `docs/export-guides.md`.
+Agent guides: `docs/export-guides.md`. File formats, sizes and quirks: `docs/export-formats.md`.
+
+**Reading happens in the agent's browser.** Files are read as a stream (any size, media never unpacked), each conversation keeps its first 6 and last 60 messages, and only the shortlisted dead leads' excerpts are sent to the server for the AI read. The private chats never leave the agent's device.
 
 ## 7. Tech stack (same as the website team already runs)
 - Next.js 16 + TypeScript + Tailwind v4, installable on phones (PWA).
@@ -65,9 +70,12 @@ Agent guides: `docs/export-guides.md`.
 ## 8. Repo layout
 ```
 docs/                    plan, research, export guides, CINC email, case study
-src/lib/parsers/         instagram, facebook, whatsapp, linkedin, csv, detect
-src/lib/normalize.ts     Contact / Message types, cross-channel merge
-src/lib/dormancy.ts      rule-based dead-lead detection
+src/lib/parsers/         meta (Instagram + Facebook), whatsapp, linkedin, telegram, tiktok, generic-json
+src/lib/archive.ts       streaming ZIP reader (media skipped)
+src/lib/accumulator.ts   one conversation, bounded memory
+src/lib/import.ts        files in → conversations, who is the agent, re-export handling
+src/lib/identity.ts      same lead across platforms (phone, email, profile URL only)
+src/lib/dormancy.ts      rule-based dead-lead detection and ordering
 src/lib/read-lead.ts     AI reading (structured, quote-backed)
 src/lib/crm/             adapter interface; cinc (mock until access), csv import
 src/app/                 upload, dashboard, lead card, settings
@@ -76,7 +84,7 @@ tests/fixtures/          small fake exports per platform (never real chats)
 
 ## 9. Phases
 1. Repo + docs. **Done.**
-2. Parsers + dead-lead rules, tested on fake exports for all four platforms (including Arabic WhatsApp).
+2. Parsers + dead-lead rules, tested on fake exports (including Arabic WhatsApp and a 1,000,000-message test). **Done (19 Oct 2026), in `src/lib/`.** Needs one real export per platform to confirm the unconfirmed details in `docs/export-formats.md`.
 3. AI lead reading + dashboard + lead card (premium dark style).
 4. CINC: CSV import first, API once access arrives, outcome notes written back.
 5. Daily Top 5 email + outcome tracking.
