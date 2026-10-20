@@ -9,6 +9,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
+  // Browser bar colour: --rws-bg (metadata cannot read CSS variables).
   themeColor: "#000000",
 };
 

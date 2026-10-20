@@ -145,3 +145,38 @@ describe("POST /api/read-lead", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 });
+
+describe("brand colours", () => {
+  it("the app uses exactly the website's colour tokens, and no other colour codes", async () => {
+    const { readFileSync, readdirSync, statSync } = await import("node:fs");
+    const { join } = await import("node:path");
+    const tokens = (css: string) =>
+      Object.fromEntries([...css.matchAll(/--(rws-[a-z-]+):\s*(#[0-9a-fA-F]{6})/g)].map((m) => [m[1], m[2]!.toLowerCase()]));
+    const app = tokens(readFileSync("src/app/globals.css", "utf8"));
+    expect(app).toEqual({
+      "rws-bg": "#000000",
+      "rws-box-border": "#1f1f1f",
+      "rws-box-fill": "#333333",
+      "rws-gold": "#cebd63",
+      "rws-gold-hover": "#d9cb7a",
+      "rws-text-primary": "#f9f7ec",
+      "rws-text-secondary": "#fbfaf3",
+      "rws-text-tertiary": "#fdfefb",
+      "rws-white": "#ffffff",
+    });
+    const allowed = new Set(Object.values(app));
+    const files: string[] = [];
+    const walk = (d: string) =>
+      readdirSync(d).forEach((f) => (statSync(join(d, f)).isDirectory() ? walk(join(d, f)) : files.push(join(d, f))));
+    walk("src");
+    const offenders: string[] = [];
+    for (const f of files.filter((f) => /\.(tsx?|css|svg)$/.test(f))) {
+      const text = readFileSync(f, "utf8");
+      for (const m of text.matchAll(/#[0-9a-fA-F]{3,8}\b/g)) {
+        if (!allowed.has(m[0].toLowerCase())) offenders.push(`${f}: ${m[0]}`);
+      }
+      if (/\brgba?\(|\bhsla?\(/.test(text)) offenders.push(`${f}: rgb/hsl colour`);
+    }
+    expect(offenders).toEqual([]);
+  });
+});
