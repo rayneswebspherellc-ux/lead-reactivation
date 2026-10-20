@@ -16,6 +16,7 @@ export const EXCLUDE_NAMES: Record<ExcludeReason, string> = {
   group_only: "Group chats only",
   lead_never_wrote: "They never wrote a real message",
   opted_out: "They asked not to be contacted",
+  selling_to_you: "They were selling something to you",
   spam_folder: "In the spam folder",
 };
 

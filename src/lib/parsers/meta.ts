@@ -8,7 +8,7 @@ import type { Channel, MessageKind, RawMessage, ThreadPart } from "../types";
  * mojibake-encoded; timestamps are epoch milliseconds (UTC).
  */
 
-interface MetaMessage {
+export interface MetaMessage {
   sender_name?: string;
   timestamp_ms?: number;
   content?: string;
@@ -48,6 +48,8 @@ const FOLDERS = [
   "filtered_threads",
   "archived_threads",
   "e2ee_cutover",
+  // Seen in a real Facebook export (Oct 2026): archived chats moved to encryption.
+  "e2ee_cutover_archived",
 ];
 
 // English platform phrases (exports are written in the account's language;
@@ -59,10 +61,35 @@ const STORY_RE =
   /^(replied to your story|.{0,80}replied to your story\.?|mentioned you in their story|you replied to their story|.{0,80} mentioned you in (their|a) story)\.?$/i;
 const CALL_RE =
   /^(you missed a call from .+|.{1,80} missed your call\.?|the video chat ended\.?|the call ended\.?|.{1,80} started a (video|audio) call\.?)$/i;
-const SYSTEM_RE =
-  /^(you are now connected on messenger\.?|you can now (message|call) .+|.{1,80} (named|changed|set) the (group|chat|nickname|theme|emoji).*|.{1,80} (added|removed|left) .*|you (added|removed|left) .*|this message was unsent\.?|.{1,80} unsent a message\.?|you unsent a message\.?)$/i;
+// Only Facebook's exact event lines. Loose patterns such as "… left …" would
+// swallow real messages ("I left you a voicemail"), hiding real leads.
+const SYSTEM_RE = new RegExp(
+  "^(" +
+    [
+      "you are now connected on messenger",
+      "you're now connected on messenger",
+      "you can now (message|call) each other.*",
+      "you can now message and call each other.*",
+      "say hi to your new facebook friend.*",
+      "a contact (added participants|added you to the group|created the group chat|left the group|removed .{1,80} from the group)",
+      ".{1,80} added .{1,80} to the group",
+      ".{1,80} removed .{1,80} from the group",
+      ".{1,80} left the group",
+      ".{1,80} created the group",
+      "(you|.{1,80}) (named|renamed) the (group|chat).*",
+      "(you|.{1,80}) changed the (group photo|group name|chat theme|theme|emoji|chat emoji).*",
+      "(you|.{1,80}) set (the|your|their|his|her) nickname.*",
+      "(you|.{1,80}) set the nickname for .*",
+      "(you|.{1,80}) (set|changed) the quick reaction.*",
+      "this message was unsent",
+      "(you|.{1,80}) unsent a message",
+      "(you|.{1,80}) (pinned|unpinned) a message",
+    ].join("|") +
+    ")\\.?$",
+  "i",
+);
 
-function classify(m: MetaMessage, text: string): MessageKind {
+export function classify(m: MetaMessage, text: string): MessageKind {
   if (m.is_unsent) return "unsent";
   if (m.type === "Call" || typeof m.call_duration === "number") return "call";
   if (m.type === "Subscribe" || m.type === "Unsubscribe") return "system";
@@ -71,6 +98,8 @@ function classify(m: MetaMessage, text: string): MessageKind {
     if (m.photos || m.videos || m.audio_files || m.gifs || m.files || m.sticker) return "media";
     return "system";
   }
+  // HTML exports write deleted messages as words instead of an is_unsent flag.
+  if (/^(this message was unsent|(you|.{1,80}) unsent a message)\.?$/i.test(text)) return "unsent";
   if (REACTION_RE.test(text)) return "reaction";
   if (STORY_RE.test(text)) return "story_reply";
   if (CALL_RE.test(text)) return "call";
@@ -88,7 +117,7 @@ export function channelFromPath(path: string, hint?: Channel): Channel {
 }
 
 /** Thread folder and platform folder (inbox, message_requests…) from the file path or thread_path. */
-function locate(path: string, threadPath?: string): { key?: string; folder?: string } {
+export function locate(path: string, threadPath?: string): { key?: string; folder?: string } {
   const segs = (threadPath ?? path).split(/[\\/]/).filter(Boolean);
   for (let i = segs.length - 1; i >= 0; i--) {
     const s = segs[i]!.toLowerCase();

@@ -4,6 +4,7 @@ import { mergeIntoLeads } from "./identity";
 import { findGenericThreads } from "./parsers/generic-json";
 import { looksLikeLinkedInMessages, parseLinkedInMessages } from "./parsers/linkedin";
 import { channelFromPath, looksLikeMetaThread, parseMetaThread } from "./parsers/meta";
+import { looksLikeMetaHtml, parseMetaHtml } from "./parsers/meta-html";
 import { looksLikeTelegram, parseTelegram } from "./parsers/telegram";
 import { findTikTokChats } from "./parsers/tiktok";
 import { looksLikeWhatsApp, parseWhatsApp, titleFromFileName } from "./parsers/whatsapp";
@@ -115,29 +116,32 @@ export class Importer {
   private addEntry(path: string, bytes: Uint8Array, archive: string, inArchive: boolean): void {
     this.stats.filesSeen++;
     const lower = path.toLowerCase();
-    if (/\.html?$/.test(lower)) {
-      if (/messag|inbox|chat/.test(lower) && !this.htmlArchives.has(archive)) {
-        this.htmlArchives.add(archive);
-        this.warn(
-          "html_export",
-          archive,
-          "This export is in HTML format. Please request it again and choose JSON as the format.",
-        );
-      }
-      return;
-    }
-    // An identical file again is still read: it belongs to whichever export it
-    // came in, and finish() keeps one copy of each chat, so nothing is counted twice.
-    const sig = fnv1a(bytes);
-    if (this.seenFiles.has(sig)) {
-      this.warn("duplicate_file", path, "This file was already added; each chat is counted once.");
-    }
-    this.seenFiles.add(sig);
+    // Only conversation pages of an HTML export are chats; the rest (settings,
+    // ads, the "your_messages" index…) are skipped quietly.
+    if (/\.html?$/.test(lower) && !/(^|\/)message_\d+\.html?$/.test(lower)) return;
 
     let parts: ThreadPart[] = [];
     try {
       const text = decodeText(bytes);
-      if (lower.endsWith(".json")) {
+      if (/\.html?$/.test(lower)) {
+        const res = looksLikeMetaHtml(text)
+          ? parseMetaHtml(text, path, {
+              hint: this.opts.channelHint,
+              timeZoneOffsetMinutes: this.opts.timeZoneOffsetMinutes,
+            })
+          : null;
+        if (res) {
+          parts = [res.part];
+          if (res.owner) this.addSelfHint(res.part.channel, res.owner);
+        } else if (!this.htmlArchives.has(archive)) {
+          this.htmlArchives.add(archive);
+          this.warn(
+            "html_export",
+            archive,
+            "Some conversation pages in this HTML export could not be read. Exporting again as JSON may help.",
+          );
+        }
+      } else if (lower.endsWith(".json")) {
         parts = this.readJson(text, path, inArchive);
       } else if (lower.endsWith(".csv")) {
         if (looksLikeLinkedInMessages(text)) parts = parseLinkedInMessages(text);
@@ -171,6 +175,14 @@ export class Importer {
       this.stats.filesSkipped++;
       return;
     }
+    // An identical chat file again is still read: it belongs to whichever export
+    // it came in, and finish() keeps one copy of each chat, so nothing is counted
+    // twice. Only chat files are checked, so identical settings files stay quiet.
+    const sig = fnv1a(bytes);
+    if (this.seenFiles.has(sig)) {
+      this.warn("duplicate_file", path, "This file was already added; each chat is counted once.");
+    }
+    this.seenFiles.add(sig);
     this.stats.filesRead++;
     this.stats.bytesRead += bytes.length;
     // "message_1 (1).json" / "_chat - Copy.txt": a browser or Windows renamed a second copy.

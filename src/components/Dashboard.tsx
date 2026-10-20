@@ -83,7 +83,9 @@ export default function Dashboard({ outcome, quietDays }: { outcome: Outcome; qu
       ? "No one has gone quiet. Nice work."
       : groups.today.length > 0
         ? `${plural(deadCount, "person", "people")} went quiet. Start with ${plural(groups.today.length, "person", "people", true)} today.`
-        : `${plural(deadCount, "person", "people")} went quiet. None need you urgently; start with this week's list.`;
+        : groups.week.length > 0
+          ? `${plural(deadCount, "person", "people")} went quiet. None need you urgently; start with this week's list.`
+          : `${plural(deadCount, "person", "people")} went quiet. None showed clear interest in property, so nothing is urgent.`;
 
   return (
     <div className="flex flex-col gap-10">

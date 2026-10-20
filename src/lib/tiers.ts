@@ -31,6 +31,7 @@ export function tierOf(v: Verdict, brief?: Brief | null): Tier {
     return "later";
   }
   const intent = v.signals.filter((s) => s in INTENT_PLAIN).length;
+  if (v.signals.includes("small talk only")) return "later";
   if (v.prescore >= 60 || (v.pattern === "lead_waiting" && intent >= 2)) return "today";
   if (v.prescore >= 35 || intent >= 2) return "week";
   return "later";
@@ -56,6 +57,7 @@ const OTHER_PLAIN: Record<string, string> = {
   "left without a reply": "never got your reply",
   "last message was a question": "asked you a question",
   "several platforms": "talked to you on more than one app",
+  "small talk only": "only small talk so far",
 };
 
 export function plainSignals(v: Verdict, max = 4): string[] {

@@ -22,6 +22,7 @@ export type ExcludeReason =
   | "group_only"
   | "lead_never_wrote"
   | "opted_out"
+  | "selling_to_you"
   | "spam_folder";
 
 export interface Verdict {
@@ -47,13 +48,39 @@ const DAY = 86_400_000;
 const OPT_OUT_RE =
   /\b(stop|unsubscribe|not interested|no longer interested|remove me|do not (contact|message|text|call) me|don'?t (contact|message|text|call) me|leave me alone|wrong number)\b|غير مهتم|لا تتصل|لا ترسل|توقف|إلغاء الاشتراك|الغاء الاشتراك|رقم خطأ/i;
 
+/*
+ * Real estate intent is judged per message, not per word. Learned from a real
+ * Facebook inbox (Oct 2026): single everyday words ("home", "budget", "sell")
+ * in long chats with friends, and service sellers' pitches ("buy a house…
+ * financial freedom"), were ranked as hot leads. Now a message counts only if
+ * it holds a clearly real-estate term, or a property word together with a
+ * deal word in the same message.
+ */
+const STRONG_RE =
+  /\b(rent(ing|al)?|for rent|for sale|to let|lease|tenancy|mortgage|pre-?approv\w*|viewings?|off[- ]?plan|payment plan|handover|golden visa|real estate|propert(y|ies)|bedrooms?|\d\s?(bed|br|bhk)s?|villa|apartment|condo|townhouse|penthouse|duplex|bungalow|plot of land|acres?)\b|عقار|شقة|فيلا|إيجار|ايجار|استئجار|معاينة|الإقامة الذهبية/i;
+const PROPERTY_RE = /\b(house|home|flat|land|plot|unit|studio|place|building|office|shop)\b|منزل|بيت|أرض/i;
+const DEAL_RE =
+  /\b(buy|buying|purchase|sell|selling|price|cost|how much|budget|available|availability|inspect\w*|visit|see it|view it|invest\w*|deposit|down ?payment)\b|شراء|بيع|سعر|ميزانية|استثمار/i;
+
+/** People selling something to the agent (credit repair, followers, crypto…). */
+const SOLICIT_RE =
+  /(credit (report|repair|restoration)|repair (and|&) clear|negativ\w* on your|boost your|grow your (page|business|account|brand)|\bfollowers\b|\bsubscribers\b|\bseo\b|web(site)? design|graphic design|logo design|\bforex\b|\bcrypto|bitcoin|binary option|trading (signal|account|platform)|investment (plan|platform|package)|earn (up to )?\$|make money online|work from home|loan (offer|approval)|are you interested (in|to)\b|i (can|will) help you (to )?(get|grow|boost|fix|clear|increase)|(my|our) services\b|promote your|hire me\b)/i;
+
+/** Small talk only: greetings and pleasantries. */
+const SMALL_TALK_RE =
+  /^\W*(hi+|hello|hey|hy|hiya|good (morning|afternoon|evening|night|day)|happy .{0,30}|how are you.{0,30}|how (is|was) .{0,30}|thanks?.{0,30}|thank you.{0,30}|ok(ay)?|alright|amen.{0,20}|god bless.{0,30}|yes|yeah|no|lol|nice|cool|congrat\w*.{0,30}|welcome|dear|bro|sis)\W*$/i;
+
+export function isIntentMessage(text: string): boolean {
+  return STRONG_RE.test(text) || (PROPERTY_RE.test(text) && DEAL_RE.test(text));
+}
+
 // Words that show real estate intent (English and Arabic). Each distinct hit adds a little.
 const INTENT_TERMS: [string, RegExp][] = [
   ["buy", /\b(buy|buying|purchase|purchasing)\b|شراء|اشتري/i],
   ["sell", /\b(sell|selling|list my|listing)\b|بيع/i],
   ["rent", /\b(rent|renting|lease|tenancy)\b|إيجار|ايجار|استئجار/i],
   ["budget", /\b(budget|price|cost|how much|asking)\b|ميزانية|سعر|كم/i],
-  ["viewing", /\b(viewing|visit|see the (unit|place|property|apartment|villa)|tour)\b|معاينة|زيارة/i],
+  ["viewing", /\b(viewing|visit|view (it|the)|see (it|the (unit|place|property|apartment|villa|house))|inspect\w*|tour)\b|معاينة|زيارة/i],
   ["bedrooms", /\b(\d\s?(bed|br|bhk|bedroom)s?|studio|bedrooms?)\b|غرف|غرفة/i],
   ["property", /\b(villa|apartment|flat|townhouse|penthouse|condo|duplex|plot|land|house|home)\b|شقة|فيلا|أرض|منزل/i],
   ["offplan", /\b(off[- ]?plan|handover|payment plan|launch)\b/i],
@@ -116,7 +143,14 @@ export function evaluateLead(lead: Lead, opts: DormancyOptions): Verdict {
   // Prescore: an ordering hint built only from the conversation.
   let score = 0;
   const signals: string[] = [];
-  const allLeadText = leadMsgs.map((m) => m.text).join("\n");
+  const intentMsgs = leadMsgs.filter((m) => isIntentMessage(m.text));
+  const solicitMsgs = leadMsgs.filter((m) => SOLICIT_RE.test(m.text));
+  if (solicitMsgs.length > 0 && solicitMsgs.length >= intentMsgs.length) {
+    return { ...base, status: "excluded", excludeReason: "selling_to_you", lastLeadAt, lastLeadMessage };
+  }
+  const smallTalkOnly = leadMsgs.every((m) => SMALL_TALK_RE.test(m.text.trim()));
+  // Signals come only from messages that really talk about property.
+  const allLeadText = intentMsgs.map((m) => m.text).join("\n");
   let intent = 0;
   const intentSignals: string[] = [];
   for (const [name, re] of INTENT_TERMS) {
@@ -135,7 +169,12 @@ export function evaluateLead(lead: Lead, opts: DormancyOptions): Verdict {
     score += 10;
     signals.push("last message was a question");
   }
-  score += Math.min(20, leadTexts * 2);
+  // A long chat only counts for much when it is about property.
+  score += intent > 0 ? Math.min(20, leadTexts * 2) : Math.min(6, leadTexts);
+  if (smallTalkOnly) {
+    score = Math.min(score, 20);
+    signals.push("small talk only");
+  }
   signals.push(...intentSignals);
   score += Math.min(28, intent * 4);
   if (daysSilent <= 180) score += 15;
