@@ -1,0 +1,24 @@
+{
+  // Lead Reactivation on Cloudflare Workers (via @opennextjs/cloudflare).
+  // Secrets are NOT here. Add them with: npx wrangler secret put NAME
+  //   OPENAI_API_KEY, DATA_ENCRYPTION_SECRET, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, RESEND_API_KEY
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "lead-reactivation",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2025-09-01",
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "assets": { "directory": ".open-next/assets", "binding": "ASSETS" },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "lead-reactivation",
+      // Replace with the id printed by: npx wrangler d1 create lead-reactivation
+      "database_id": "00000000-0000-0000-0000-000000000000",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "vars": {
+    "LOGIN_EMAIL_FROM": "RaynesWebSphere <website@rayneswebsphere.com>"
+  },
+  "observability": { "enabled": true, "head_sampling_rate": 1 }
+}

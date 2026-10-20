@@ -20,3 +20,8 @@ const nextConfig: NextConfig = {
 };
 
 export default nextConfig;
+
+// Gives `next dev` the Cloudflare bindings (the local D1 database) from wrangler.jsonc.
+if (process.env.NODE_ENV === "development") {
+  void import("@opennextjs/cloudflare").then((m) => m.initOpenNextCloudflareForDev());
+}

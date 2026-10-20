@@ -40,14 +40,22 @@ Tests (`tests/isolation.test.ts`, 7 tests) prove each point on a real SQLite dat
 - injection-style ids are refused
 - keys differ per agent
 
+## Sign-in (built 20 Oct 2026, founder chose Google + email)
+- **Google:** OAuth with state and PKCE (via `arctic`). Only a Google-verified email can create an account or join an existing one, so an unverified Google email can never take over an account.
+- **Email:** a 6-digit code, no passwords at all. Codes are stored only as SHA-256 hashes, expire after 10 minutes, lock after 5 wrong tries, at most 5 codes per address per hour. The answer never reveals whether an address has an account.
+- **Sessions:** a random 256-bit token in an HttpOnly, SameSite=Lax (Secure on HTTPS) cookie. Only its SHA-256 hash is stored, so a database leak gives no working logins. Sessions end after 30 days or on sign-out.
+- **Every state-changing endpoint is same-origin only.**
+- **The AI read requires sign-in, with a per-agent quota** (300 an hour, 2,000 a day) stored in the database.
+- **Delete everything, when signed in,** calls `/api/account/delete`, which removes the agent's rows from every table (saved leads, account, AI usage, sessions, codes, user) and signs them out. The app says "deleted" only after the server confirms.
+- **Tests:** `tests/auth.test.ts` (11) covers codes, lockout, expiry, hashing, the Google verified-email rule, session expiry, account deletion that touches no one else, the quota, cookie flags, refusing the AI read to strangers, and cross-site refusal. A browser walk-through also passed: the sign-in screens, the signed-in app, and delete leaving 0 users and 0 sessions in the database.
+
 ## Must happen before a public launch
-1. **Login.** Google sign-in (and email). The founder chooses the provider; the session's verified user id feeds `LeadStore.forOwner`. Then add the server delete endpoint behind the existing "Delete everything" button.
-2. **Secrets on Cloudflare:** `OPENAI_API_KEY`, and `DATA_ENCRYPTION_SECRET` (at least 32 random characters, never reused, kept out of the repo).
-3. **A Cloudflare rate-limit rule on `/api/*`.** The in-app limit is per Worker instance only.
-4. **OpenAI data terms.** Confirm API data is not used for training (OpenAI's stated default for the API) and check its retention period. Consider asking OpenAI for zero data retention, and name OpenAI in the privacy policy.
-5. **A privacy policy and terms for this app**, in plain words (what is read, where, what is sent, what is stored, how to delete). Reviewed by a lawyer, since agents are in the UAE, Bahrain, the U.S. and Canada (UAE PDPL, Bahrain PDPL, CCPA, PIPEDA).
-6. **An independent security test** (penetration test) once login is live.
-7. **Keep dependencies patched:** run `npm audit` before every release.
+1. **Secrets and setup on Cloudflare**, done by the founder (`docs/go-live.md`): `OPENAI_API_KEY`, `DATA_ENCRYPTION_SECRET`, `RESEND_API_KEY`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, the D1 database, `APP_URL`.
+2. **Cloudflare rate-limit rules** on `/api/auth/*` and `/api/read-lead` (`docs/go-live.md` step 5). They are set far above real use, so agents are never limited.
+3. **OpenAI:** a separate key for this app with a monthly spending cap. Re-check OpenAI's API data terms before launch.
+4. **Privacy policy** (`/privacy`): written in plain words from common good practice (founder decision, 20 Oct 2026: no lawyer for now). Revisit when the company can afford a legal review.
+5. **An independent security test** once sign-in is live (founder agreed).
+6. **Keep dependencies patched:** run `npm audit` before every release.
 
 ## What agents should be told (plain words, on the app's start page)
 - Your chats are read on this device. They are never uploaded or saved by us.

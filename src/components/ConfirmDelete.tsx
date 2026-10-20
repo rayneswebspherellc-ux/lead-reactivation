@@ -2,7 +2,15 @@
 
 import { useEffect, useRef } from "react";
 
-export default function ConfirmDelete({ onConfirm, onCancel }: { onConfirm: () => void; onCancel: () => void }) {
+export default function ConfirmDelete({
+  account,
+  onConfirm,
+  onCancel,
+}: {
+  account: boolean;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
   const cancel = useRef<HTMLButtonElement>(null);
   useEffect(() => {
     cancel.current?.focus();
@@ -28,8 +36,9 @@ export default function ConfirmDelete({ onConfirm, onCancel }: { onConfirm: () =
         </div>
         <div className="px-1 sm:px-4 py-6 flex flex-col gap-6">
           <p id="delete-text" className="text-body-lg text-rws-text-secondary/80">
-            This removes every chat, lead, AI read and note this app holds for you. It cannot be undone. The export
-            files on your own computer or phone are not touched.
+            This removes every chat, lead, AI read and note this app holds for you
+            {account ? ", and your account" : ""}. It cannot be undone. The export files on your own computer or phone
+            are not touched.
           </p>
           <div className="flex flex-col-reverse sm:flex-row gap-3 sm:justify-end">
             <button ref={cancel} type="button" className="btn-outline" onClick={onCancel}>

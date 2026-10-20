@@ -3,6 +3,9 @@ import { POST } from "../src/app/api/read-lead/route";
 import { buildBriefRequest, sanitiseBrief, validateBriefRequest, type Brief, type BriefRequest } from "../src/lib/ai/brief";
 import { findDeadLeads } from "../src/lib/dormancy";
 import { Importer } from "../src/lib/import";
+import { createSession, userForGoogle } from "../src/lib/server/auth";
+import { setTestEnv, type ServerEnv } from "../src/lib/server/env";
+import { testDb } from "./db";
 import { NOW } from "./helpers";
 
 const req: BriefRequest = {
@@ -71,9 +74,17 @@ describe("AI brief rules", () => {
 });
 
 describe("POST /api/read-lead", () => {
+  let cookie = "";
+  const signedIn = async (env: Partial<ServerEnv> = {}) => {
+    const { db } = testDb();
+    const u = await userForGoogle(db, { sub: "s", email: "agent@example.com", email_verified: true });
+    cookie = `lr_session=${await createSession(db, u!.id)}`;
+    setTestEnv({ DB: db, ...env });
+  };
+
   afterEach(() => {
     vi.unstubAllGlobals();
-    vi.unstubAllEnvs();
+    setTestEnv(null);
   });
 
   const call = (body: unknown, headers: Record<string, string> = { origin: "http://x" }) =>
@@ -81,12 +92,12 @@ describe("POST /api/read-lead", () => {
       new Request("http://x/api/read-lead", {
         method: "POST",
         body: typeof body === "string" ? body : JSON.stringify(body),
-        headers: { "content-type": "application/json", ...headers },
+        headers: { "content-type": "application/json", cookie, ...headers },
       }),
     );
 
   it("refuses calls from other websites", async () => {
-    vi.stubEnv("OPENAI_API_KEY", "test-key");
+    await signedIn({ OPENAI_API_KEY: "test-key" });
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
     expect((await call(req, { origin: "https://evil.example" })).status).toBe(403);
@@ -96,20 +107,20 @@ describe("POST /api/read-lead", () => {
   });
 
   it("refuses oversized bodies even when the size header lies", async () => {
-    vi.stubEnv("OPENAI_API_KEY", "test-key");
+    await signedIn({ OPENAI_API_KEY: "test-key" });
     const res = await call("x".repeat(250_000));
     expect(res.status).toBe(413);
   });
 
   it("says honestly when no AI key is set", async () => {
-    vi.stubEnv("OPENAI_API_KEY", "");
+    await signedIn();
     const res = await call(req);
     expect(res.status).toBe(503);
     expect(await res.json()).toEqual({ error: "not_connected" });
   });
 
   it("returns a cleaned brief from the model", async () => {
-    vi.stubEnv("OPENAI_API_KEY", "test-key");
+    await signedIn({ OPENAI_API_KEY: "test-key" });
     const fetchMock = vi.fn().mockResolvedValue(
       new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify(modelAnswer) } }] }), { status: 200 }),
     );
@@ -126,7 +137,7 @@ describe("POST /api/read-lead", () => {
   });
 
   it("refuses bad input before calling the model", async () => {
-    vi.stubEnv("OPENAI_API_KEY", "test-key");
+    await signedIn({ OPENAI_API_KEY: "test-key" });
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
     const res = await call({ leadName: "x", lines: [] });

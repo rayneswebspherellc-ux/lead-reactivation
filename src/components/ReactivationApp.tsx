@@ -6,6 +6,7 @@ import type { Channel } from "@/lib/types";
 import type { FromWorker, Outcome, ToWorker } from "@/workers/import.worker";
 import ConfirmDelete from "./ConfirmDelete";
 import DropStep from "./DropStep";
+import SignIn from "./SignIn";
 import Dashboard from "./Dashboard";
 import WhoAreYou from "./WhoAreYou";
 
@@ -14,6 +15,13 @@ type Stage =
   | { name: "reading"; fileName: string; fileIndex: number; fileCount: number; bytes: number; totalBytes: number }
   | { name: "who"; outcome: Outcome }
   | { name: "results"; outcome: Outcome };
+
+type Auth =
+  | { state: "checking" }
+  | { state: "signed_out"; notice?: string; googleError?: string | null }
+  | { state: "signed_in"; email: string }
+  /** No sign-in on this server (local preview): the app still works on this device only. */
+  | { state: "unavailable" };
 
 /** The browser's date order, for WhatsApp files whose dates cannot decide it. */
 function localeDateOrder(): "dmy" | "mdy" {
@@ -27,9 +35,44 @@ export default function ReactivationApp() {
   const [stage, setStage] = useState<Stage>({ name: "drop" });
   const [quietDays, setQuietDays] = useState(30);
   const [confirming, setConfirming] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [auth, setAuth] = useState<Auth>({ state: "checking" });
   const worker = useRef<Worker | null>(null);
 
   useEffect(() => () => worker.current?.terminate(), []);
+
+  useEffect(() => {
+    let alive = true;
+    const params = new URLSearchParams(window.location.search);
+    const googleError = params.get("signin");
+    fetch("/api/me", { cache: "no-store" })
+      .then(async (r) => {
+        if (!alive) return;
+        // Clear "?signin=…" only once its message is about to show.
+        if (googleError) window.history.replaceState(null, "", "/");
+        if (r.ok) {
+          const d = (await r.json()) as { user: { email: string } };
+          setAuth({ state: "signed_in", email: d.user.email });
+        } else if (r.status === 401) {
+          setAuth({ state: "signed_out", googleError });
+        } else {
+          setAuth({ state: "unavailable" });
+        }
+      })
+      .catch(() => alive && setAuth({ state: "unavailable" }));
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  const signOut = async () => {
+    await fetch("/api/auth/logout", { method: "POST" }).catch(() => null);
+    worker.current?.terminate();
+    worker.current = null;
+    clearAllLocalData();
+    setStage({ name: "drop" });
+    setAuth({ state: "signed_out", notice: "You are signed out." });
+  };
 
   const onMessage = useCallback((e: MessageEvent<FromWorker>) => {
     const m = e.data;
@@ -76,14 +119,34 @@ export default function ReactivationApp() {
     setStage({ name: "drop" });
   };
 
-  /** Ends the reader (dropping every chat it held) and wipes what this browser kept. */
-  const deleteEverything = () => {
+  /**
+   * Ends the reader (dropping every chat it held), wipes what this browser
+   * kept and, when signed in, deletes the account and all its data on the
+   * server. Only says "deleted" once the server confirms it.
+   */
+  const deleteEverything = async () => {
+    setDeleteError(null);
+    if (auth.state === "signed_in") {
+      const res = await fetch("/api/account/delete", { method: "POST" }).catch(() => null);
+      if (!res?.ok) {
+        setConfirming(false);
+        setDeleteError("We could not delete your account just now. Nothing was deleted. Please try again.");
+        return;
+      }
+    }
     worker.current?.terminate();
     worker.current = null;
     clearAllLocalData();
     setConfirming(false);
-    setStage({ name: "drop", notice: "Everything was deleted. Nothing about your chats is left in this app." });
+    const notice = "Everything was deleted. Nothing about you or your chats is left in this app.";
+    setStage({ name: "drop", notice });
+    if (auth.state === "signed_in") setAuth({ state: "signed_out", notice });
   };
+
+  if (auth.state === "checking") {
+    return <main className="min-h-dvh" aria-busy="true" />;
+  }
+  const signedOut = auth.state === "signed_out";
 
   return (
     <main className="min-h-dvh w-full max-w-[1920px] mx-auto px-4 sm:px-10 lg:px-[50px] py-6 sm:py-10">
@@ -96,25 +159,48 @@ export default function ReactivationApp() {
           </span>
           <span className="text-label text-rws-gold">Lead Reactivation</span>
         </div>
-        <div className="flex flex-wrap justify-end gap-2">
-          {stage.name === "results" || stage.name === "who" ? (
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          {auth.state === "signed_in" && (
+            <span className="text-caption text-rws-text-secondary/60 hidden sm:inline mr-2">{auth.email}</span>
+          )}
+          {!signedOut && (stage.name === "results" || stage.name === "who") ? (
             <button type="button" className="btn-outline" onClick={restart}>
               New import
             </button>
           ) : null}
-          <button type="button" className="btn-outline" onClick={() => setConfirming(true)}>
-            Delete everything
-          </button>
+          {auth.state === "signed_in" && (
+            <button type="button" className="btn-outline" onClick={signOut}>
+              Sign out
+            </button>
+          )}
+          {!signedOut && (
+            <button type="button" className="btn-outline" onClick={() => setConfirming(true)}>
+              Delete everything
+            </button>
+          )}
         </div>
       </header>
 
-      {confirming && <ConfirmDelete onConfirm={deleteEverything} onCancel={() => setConfirming(false)} />}
+      {confirming && (
+        <ConfirmDelete
+          account={auth.state === "signed_in"}
+          onConfirm={deleteEverything}
+          onCancel={() => setConfirming(false)}
+        />
+      )}
+      {deleteError && (
+        <p role="alert" className="mb-6 text-body text-rws-gold">
+          {deleteError}
+        </p>
+      )}
 
-      {stage.name === "drop" && (
+      {signedOut && <SignIn googleError={auth.googleError} notice={auth.notice} />}
+
+      {!signedOut && stage.name === "drop" && (
         <DropStep onStart={start} error={stage.error} notice={stage.notice} defaultQuietDays={quietDays} />
       )}
 
-      {stage.name === "reading" && (
+      {!signedOut && stage.name === "reading" && (
         <section className="border border-rws-box-border rounded-3xl p-6 sm:p-10 lg:p-14" aria-live="polite">
           <h1 className="heading-section text-rws-text mb-3">Reading your conversations</h1>
           <p className="text-body text-rws-text-secondary/80 mb-8">
@@ -136,9 +222,9 @@ export default function ReactivationApp() {
         </section>
       )}
 
-      {stage.name === "who" && <WhoAreYou questions={stage.outcome.needsSelf} onConfirm={confirmSelf} />}
+      {!signedOut && stage.name === "who" && <WhoAreYou questions={stage.outcome.needsSelf} onConfirm={confirmSelf} />}
 
-      {stage.name === "results" && <Dashboard outcome={stage.outcome} quietDays={quietDays} />}
+      {!signedOut && stage.name === "results" && <Dashboard outcome={stage.outcome} quietDays={quietDays} />}
     </main>
   );
 }
