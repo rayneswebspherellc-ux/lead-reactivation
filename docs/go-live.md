@@ -2,7 +2,7 @@
 
 You type every secret yourself, straight into Cloudflare. Nobody else (including the AI) ever needs to see them. Each step says where to click or what to type in a terminal inside the `lead-reactivation` folder.
 
-## 1. Create the database (once)
+## 1. Create the database (once). **Done 21 Oct 2026** (D1 `lead-reactivation`, id `ceb7b349-939d-4daa-81bc-19262990a660`, both migrations applied)
 ```
 npx wrangler login
 npx wrangler d1 create lead-reactivation

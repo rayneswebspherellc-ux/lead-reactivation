@@ -12,13 +12,15 @@
     {
       "binding": "DB",
       "database_name": "lead-reactivation",
-      // Replace with the id printed by: npx wrangler d1 create lead-reactivation
-      "database_id": "00000000-0000-0000-0000-000000000000",
+      // Created 21 Oct 2026 in the RaynesWebSphere Cloudflare account; tables from migrations/ applied.
+      "database_id": "ceb7b349-939d-4daa-81bc-19262990a660",
       "migrations_dir": "migrations"
     }
   ],
   "vars": {
-    "LOGIN_EMAIL_FROM": "RaynesWebSphere <website@rayneswebsphere.com>"
+    "LOGIN_EMAIL_FROM": "RaynesWebSphere <website@rayneswebsphere.com>",
+    // Public address (used for the Google sign-in return). Change when a custom domain is added.
+    "APP_URL": "https://lead-reactivation.rayneswebsphere.workers.dev"
   },
   "observability": { "enabled": true, "head_sampling_rate": 1 }
 }
